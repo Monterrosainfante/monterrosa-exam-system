@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Monterrosa Infante - Exam System</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 40px;
+      background-color: #f4f4f4;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      background-color: #2c3e50;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Math Exam</h2>
+
+  <p>1. What is 5 + 3?</p>
+  <input type="radio" name="q1" value="6"> 6<br>
+  <input type="radio" name="q1" value="8"> 8<br>
+  <input type="radio" name="q1" value="10"> 10<br>
+
+  <p>2. What is 10 - 4?</p>
+  <input type="radio" name="q2" value="5"> 5<br>
+  <input type="radio" name="q2" value="6"> 6<br>
+  <input type="radio" name="q2" value="7"> 7<br>
+
+  <button onclick="checkExam()">Submit Exam</button>
+
+  <h3 id="result"></h3>
+</div>
+
+<script>
+function checkExam() {
+  let score = 0;
+
+  let q1 = document.querySelector('input[name="q1"]:checked');
+  let q2 = document.querySelector('input[name="q2"]:checked');
+
+  if (q1 && q1.value === "8") score++;
+  if (q2 && q2.value === "6") score++;
+
+  document.getElementById("result").innerText = 
+    "Your score: " + score + " / 2";
+}
+</script>
+
+</body>
+</html>
