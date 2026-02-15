@@ -37,7 +37,12 @@
 
 <body>
 
+<div id="examSection" style="display:none;">
+
+</div>
 <div class="card">
+</div>
+
   <h2>Math Exam</h2>
 
   <p>1. What is 5 + 3?</p>
@@ -89,10 +94,12 @@ window.checkExam = async function() {
 }
 
 </script>
-  import { getFirestore, collection, addDoc } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+ 
 <script type="module">import { getFirestore, collection, addDoc } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  
+  import { onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
@@ -109,6 +116,14 @@ from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById("examSection").style.display = "block";
+  } else {
+    document.getElementById("examSection").style.display = "none";
+  }
+});
+
   const db = getFirestore(app);
 
   window.register = function() {
@@ -125,7 +140,10 @@ from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     const password = document.getElementById("password").value;
 
     signInWithEmailAndPassword(auth, email, password)
-      .then(() => alert("Logged in!"))
+      .then((userCredential) => {
+  alert("Logged in as " + userCredential.user.email);
+})
+
       .catch(error => alert(error.message));
   }
 </script>
