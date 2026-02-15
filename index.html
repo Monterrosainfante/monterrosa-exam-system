@@ -15,9 +15,10 @@
       max-width: 500px;
       margin: auto;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
     }
     button {
-      margin-top: 15px;
+      margin-top: 10px;
       padding: 10px;
       width: 100%;
       border: none;
@@ -28,21 +29,19 @@
     }
   </style>
 </head>
-  <h2>Login</h2>
-<input type="email" id="email" placeholder="Email"><br><br>
-<input type="password" id="password" placeholder="Password"><br><br>
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
-<hr>
 
 <body>
 
-<div id="examSection" style="display:none;">
-
-</div>
 <div class="card">
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+  <button id="registerBtn">Register</button>
+  <button id="loginBtn">Login</button>
+  <button id="logoutBtn" style="display:none;">Logout</button>
 </div>
 
+<div id="examSection" class="card" style="display:none;">
   <h2>Math Exam</h2>
 
   <p>1. What is 5 + 3?</p>
@@ -55,97 +54,117 @@
   <input type="radio" name="q2" value="6"> 6<br>
   <input type="radio" name="q2" value="7"> 7<br>
 
-  <button onclick="checkExam()">Submit Exam</button>
+  <button id="submitExam">Submit Exam</button>
 
   <h3 id="result"></h3>
 </div>
 
-<script>
-  
-window.checkExam = async function() {
-  let score = 0;
+<script type="module">
 
-  let q1 = document.querySelector('input[name="q1"]:checked');
-  let q2 = document.querySelector('input[name="q2"]:checked');
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-  if (q1 && q1.value === "8") score++;
-  if (q2 && q2.value === "6") score++;
+import { 
+  getFirestore, 
+  collection, 
+  addDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  document.getElementById("result").innerText = 
-    "Your score: " + score + " / 2";
-
-  const user = auth.currentUser;
-
-  if (user) {
-    try {
-      await addDoc(collection(db, "examResults"), {
-        email: user.email,
-        score: score,
-        total: 2,
-        date: new Date()
-      });
-      alert("Result saved!");
-    } catch (error) {
-      alert("Error saving result: " + error.message);
-    }
-  } else {
-    alert("You must be logged in!");
-  }
-}
-
-</script>
- 
-<script type="module">import { getFirestore, collection, addDoc } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  
-  import { onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
+const firebaseConfig = {
+  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
   storageBucket: "monterrosa-exam-system.firebasestorage.app",
   messagingSenderId: "160412525297",
   appId: "1:160412525297:web:9170ff5a518e6c083e7f50"
-  };
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  onAuthStateChanged(auth, (user) => {
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// 🔐 Detectar sesión
+onAuthStateChanged(auth, (user) => {
   if (user) {
     document.getElementById("examSection").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "block";
   } else {
     document.getElementById("examSection").style.display = "none";
+    document.getElementById("logoutBtn").style.display = "none";
   }
 });
 
-  const db = getFirestore(app);
+// 📝 Register
+document.getElementById("registerBtn").onclick = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  window.register = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    alert("User created!");
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
-    createUserWithEmailAndPassword(auth, email, password)
-      .then(() => alert("User created!"))
-      .catch(error => alert(error.message));
+// 🔑 Login
+document.getElementById("loginBtn").onclick = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    alert("Logged in as " + userCredential.user.email);
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+// 🚪 Logout
+document.getElementById("logoutBtn").onclick = async () => {
+  await signOut(auth);
+  alert("Logged out!");
+};
+
+// 📊 Submit Exam
+document.getElementById("submitExam").onclick = async () => {
+  let score = 0;
+
+  const q1 = document.querySelector('input[name="q1"]:checked');
+  const q2 = document.querySelector('input[name="q2"]:checked');
+
+  if (q1 && q1.value === "8") score++;
+  if (q2 && q2.value === "6") score++;
+
+  document.getElementById("result").innerText =
+    "Your score: " + score + " / 2";
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("You must be logged in!");
+    return;
   }
 
-  window.login = function() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-  alert("Logged in as " + userCredential.user.email);
-})
-
-      .catch(error => alert(error.message));
+  try {
+    await addDoc(collection(db, "examResults"), {
+      email: user.email,
+      score: score,
+      total: 2,
+      date: new Date()
+    });
+    alert("Result saved!");
+  } catch (error) {
+    alert("Error saving result: " + error.message);
   }
+};
+
 </script>
 
 </body>
