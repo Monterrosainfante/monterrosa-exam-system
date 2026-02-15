@@ -68,7 +68,6 @@
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
@@ -90,10 +89,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
+  apiKey: "PEGA_AQUI_TU_API_KEY_REAL",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
-  storageBucket: "monterrosa-exam-system.firebasestorage.app",
+  storageBucket: "monterrosa-exam-system.appspot.com",
   messagingSenderId: "160412525297",
   appId: "1:160412525297:web:9170ff5a518e6c083e7f50"
 };
@@ -102,52 +101,106 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔐 Control de sesión
-onAuthStateChanged(auth, async (user) => {
+// 🔐 Estado de sesión
+onAuthStateChanged(auth, (user) => {
+  const examSection = document.getElementById("examSection");
+  const resultsSection = document.getElementById("resultsSection");
+  const logoutBtn = document.getElementById("logoutBtn");
+
   if (user) {
-    document.getElementById("examSection").style.display = "block";
-    document.getElementById("resultsSection").style.display = "block";
-    document.getElementById("logoutBtn").style.display = "block";
+    examSection.style.display = "block";
+    resultsSection.style.display = "block";
+    logoutBtn.style.display = "block";
     loadResults(user.email);
   } else {
-    document.getElementById("examSection").style.display = "none";
-    document.getElementById("resultsSection").style.display = "none";
-    document.getElementById("logoutBtn").style.display = "none";
+    examSection.style.display = "none";
+    resultsSection.style.display = "none";
+    logoutBtn.style.display = "none";
   }
 });
 
-// 📝 Register
-document.getElementById("registerBtn").onclick = async () => {
-  const email = emailInput();
-  const password = passwordInput();
+// Register
+document.getElementById("registerBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
   try {
     await createUserWithEmailAndPassword(auth, email, password);
-    alert("User created!");
+    alert("User created successfully!");
   } catch (error) {
     alert(error.message);
   }
-};
+});
 
-// 🔑 Login
-document.getElementById("loginBtn").onclick = async () => {
-  const email = emailInput();
-  const password = passwordInput();
+// Login
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    alert("Logged in as " + userCredential.user.email);
+    await signInWithEmailAndPassword(auth, email, password);
+    alert("Login successful!");
   } catch (error) {
     alert(error.message);
   }
-};
+});
 
-// 🚪 Logout
-document.getElementById("logoutBtn").onclick = async () => {
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", async () => {
   await signOut(auth);
   alert("Logged out!");
-};
+});
 
-// 📊 Submit Exam
-document.getElementById("submitExam").onclick = async () => {
+// Guardar examen
+document.getElementById("submitExam").addEventListener("click", async () => {
   let score = 0;
 
-  const
+  const q1 = document.querySelector('input[name="q1"]:checked');
+  const q2 = document.querySelector('input[name="q2"]:checked');
+
+  if (q1 && q1.value === "8") score++;
+  if (q2 && q2.value === "6") score++;
+
+  document.getElementById("result").innerText =
+    "Your score: " + score + " / 2";
+
+  const user = auth.currentUser;
+  if (!user) {
+    alert("You must login first.");
+    return;
+  }
+
+  await addDoc(collection(db, "examResults"), {
+    email: user.email,
+    score: score,
+    total: 2,
+    date: new Date()
+  });
+
+  alert("Result saved!");
+  loadResults(user.email);
+});
+
+// Cargar historial
+async function loadResults(email) {
+  const resultsList = document.getElementById("resultsList");
+  resultsList.innerHTML = "";
+
+  const q = query(
+    collection(db, "examResults"),
+    where("email", "==", email),
+    orderBy("date", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const li = document.createElement("li");
+    li.textContent =
+      "Score: " + data.score + "/" + data.total +
+      " | " + new Date(data.date.seconds * 1000).toLocaleString();
+    resultsList.appendChild(li);
+  });
+}
+</script>
