@@ -71,12 +71,19 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  serverTimestamp,
+  doc,
+  setDoc,
+  getDoc
+}from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  }
 
 import {
   getFirestore,
@@ -103,16 +110,37 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // 🔐 Estado de sesión
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const examSection = document.getElementById("examSection");
   const resultsSection = document.getElementById("resultsSection");
   const logoutBtn = document.getElementById("logoutBtn");
 
   if (user) {
-    examSection.style.display = "block";
-    resultsSection.style.display = "block";
+
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+
+    if (!userDoc.exists()) {
+      alert("User role not found.");
+      return;
+    }
+
+    const userData = userDoc.data();
+    const role = userData.role;
+
     logoutBtn.style.display = "block";
-    loadResults();
+
+    if (role === "student") {
+      examSection.style.display = "block";
+      resultsSection.style.display = "block";
+      loadResults();
+    }
+
+    if (role === "admin") {
+      examSection.style.display = "none";
+      resultsSection.style.display = "block";
+      loadAllResults(); // 👈 luego creamos esto
+    }
+
   } else {
     examSection.style.display = "none";
     resultsSection.style.display = "none";
@@ -126,7 +154,16 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
   const password = document.getElementById("password").value;
 
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Crear documento en colección users
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      role: "student", // 👈 por defecto todos son student
+      createdAt: serverTimestamp()
+    });
+
     alert("User created successfully!");
   } catch (error) {
     alert(error.message);
@@ -215,6 +252,35 @@ async function loadResults() {
     resultsList.appendChild(li);
   });
 }
+  async function loadAllResults() {
+  const resultsList = document.getElementById("resultsList");
+  resultsList.innerHTML = "";
+
+  const q = query(
+    collection(db, "examResults"),
+    orderBy("date", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const li = document.createElement("li");
+
+    let formattedDate = "No date";
+    if (data.date && data.date.seconds) {
+      formattedDate = new Date(data.date.seconds * 1000).toLocaleString();
+    }
+
+    li.textContent =
+      data.email +
+      " | Score: " + data.score + "/" + data.total +
+      " | " + formattedDate;
+
+    resultsList.appendChild(li);
+  });
+}
+
 </script>
 
 </body>
