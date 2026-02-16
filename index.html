@@ -171,11 +171,13 @@ document.getElementById("submitExam").addEventListener("click", async () => {
   }
 
   await addDoc(collection(db, "examResults"), {
-    email: user.email,
-    score: score,
-    total: 2,
-    date: new Date()
-  });
+  uid: auth.currentUser.uid, 
+  email: auth.currentUser.email,
+  score: score,
+  total: total,
+  date: new Date()
+});
+
 
   alert("Result saved!");
   loadResults(user.email);
@@ -187,8 +189,9 @@ async function loadResults(email) {
   resultsList.innerHTML = "";
 
   const q = query(
+    
     collection(db, "examResults"),
-    where("email", "==", email),
+    where("uid", "==", auth.currentUser.uid)
     orderBy("date", "desc")
   );
 
