@@ -71,6 +71,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
   getFirestore,
   collection,
   addDoc,
@@ -82,22 +90,10 @@ import {
   doc,
   setDoc,
   getDoc
-}from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  }
-
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
+  apiKey: "TU_API_KEY",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
   storageBucket: "monterrosa-exam-system.appspot.com",
@@ -109,7 +105,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔐 Estado de sesión
 onAuthStateChanged(auth, async (user) => {
   const examSection = document.getElementById("examSection");
   const resultsSection = document.getElementById("resultsSection");
@@ -148,9 +143,8 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = "none";
   }
 });
-  
 
-// Register
+// REGISTER
 document.getElementById("registerBtn").addEventListener("click", async () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -159,10 +153,9 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Crear documento en colección users
     await setDoc(doc(db, "users", user.uid), {
       email: user.email,
-      role: "student", // 👈 por defecto todos son student
+      role: "student",
       createdAt: serverTimestamp()
     });
 
@@ -172,7 +165,7 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
   }
 });
 
-// Login
+// LOGIN
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -185,13 +178,13 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   }
 });
 
-// Logout
+// LOGOUT
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await signOut(auth);
   alert("Logged out!");
 });
 
-// Guardar examen
+// SUBMIT EXAM
 document.getElementById("submitExam").addEventListener("click", async () => {
   let score = 0;
   let total = 2;
@@ -223,7 +216,7 @@ document.getElementById("submitExam").addEventListener("click", async () => {
   loadResults();
 });
 
-// Cargar historial
+// LOAD USER RESULTS
 async function loadResults() {
   const resultsList = document.getElementById("resultsList");
   resultsList.innerHTML = "";
@@ -233,17 +226,18 @@ async function loadResults() {
 
   const q = query(
     collection(db, "examResults"),
-    where("uid", "==", user.uid)
+    where("uid", "==", user.uid),
+    orderBy("date", "desc")
   );
 
   const snapshot = await getDocs(q);
 
-  snapshot.forEach((doc) => {
-    const data = doc.data();
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
     const li = document.createElement("li");
 
     let formattedDate = "No date";
-    if (data.date && data.date.seconds) {
+    if (data.date?.seconds) {
       formattedDate = new Date(data.date.seconds * 1000).toLocaleString();
     }
 
@@ -254,7 +248,9 @@ async function loadResults() {
     resultsList.appendChild(li);
   });
 }
-  async function loadAllResults() {
+
+// LOAD ALL RESULTS (ADMIN)
+async function loadAllResults() {
   const resultsList = document.getElementById("resultsList");
   resultsList.innerHTML = "";
 
@@ -265,12 +261,12 @@ async function loadResults() {
 
   const snapshot = await getDocs(q);
 
-  snapshot.forEach((doc) => {
-    const data = doc.data();
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
     const li = document.createElement("li");
 
     let formattedDate = "No date";
-    if (data.date && data.date.seconds) {
+    if (data.date?.seconds) {
       formattedDate = new Date(data.date.seconds * 1000).toLocaleString();
     }
 
@@ -282,7 +278,6 @@ async function loadResults() {
     resultsList.appendChild(li);
   });
 }
-
 </script>
 
 </body>
