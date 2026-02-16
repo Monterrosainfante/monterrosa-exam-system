@@ -117,15 +117,20 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
 
-    const userDoc = await getDoc(doc(db, "users", user.uid));
+    let userDoc = await getDoc(doc(db, "users", user.uid));
 
+    // Si el usuario no tiene documento, lo creamos automáticamente
     if (!userDoc.exists()) {
-      alert("User role not found.");
-      return;
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: "student",
+        createdAt: serverTimestamp()
+      });
+
+      userDoc = await getDoc(doc(db, "users", user.uid));
     }
 
-    const userData = userDoc.data();
-    const role = userData.role;
+    const role = userDoc.data().role;
 
     logoutBtn.style.display = "block";
 
@@ -138,7 +143,7 @@ onAuthStateChanged(auth, async (user) => {
     if (role === "admin") {
       examSection.style.display = "none";
       resultsSection.style.display = "block";
-      loadAllResults(); // 👈 luego creamos esto
+      loadAllResults();
     }
 
   } else {
