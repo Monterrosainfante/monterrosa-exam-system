@@ -128,14 +128,12 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = "block";
 
     if (role === "student") {
-      examSection.style.display = "block";
-      resultsSection.style.display = "block";
-      loadResults();
-    } else if (role === "admin") {
-      examSection.style.display = "none";
-      resultsSection.style.display = "block";
-      loadAllResults();
-    }
+  document.querySelector("#resultsSection h2").innerText = "My Results";
+}
+
+if (role === "admin") {
+  document.querySelector("#resultsSection h2").innerText = "All Students Results";
+}
 
   } else {
     examSection.style.display = "none";
