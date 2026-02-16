@@ -127,13 +127,18 @@ onAuthStateChanged(auth, async (user) => {
 
     logoutBtn.style.display = "block";
 
+    // 👇 CAMBIAR TÍTULO DINÁMICAMENTE
     if (role === "student") {
-  document.querySelector("#resultsSection h2").innerText = "My Results";
-}
-
-if (role === "admin") {
-  document.querySelector("#resultsSection h2").innerText = "All Students Results";
-}
+      document.querySelector("#resultsSection h2").innerText = "My Results";
+      examSection.style.display = "block";
+      resultsSection.style.display = "block";
+      loadResults();
+    } else if (role === "admin") {
+      document.querySelector("#resultsSection h2").innerText = "All Students Results";
+      examSection.style.display = "none";
+      resultsSection.style.display = "block";
+      loadAllResults();
+    }
 
   } else {
     examSection.style.display = "none";
