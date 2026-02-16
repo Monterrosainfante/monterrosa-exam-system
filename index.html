@@ -85,7 +85,8 @@ import {
   query,
   where,
   getDocs,
-  orderBy
+  orderBy,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -111,7 +112,7 @@ onAuthStateChanged(auth, (user) => {
     examSection.style.display = "block";
     resultsSection.style.display = "block";
     logoutBtn.style.display = "block";
-    loadResults(user.email);
+    loadResults();
   } else {
     examSection.style.display = "none";
     resultsSection.style.display = "none";
@@ -154,6 +155,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 // Guardar examen
 document.getElementById("submitExam").addEventListener("click", async () => {
   let score = 0;
+  let total = 2;
 
   const q1 = document.querySelector('input[name="q1"]:checked');
   const q2 = document.querySelector('input[name="q2"]:checked');
@@ -162,7 +164,7 @@ document.getElementById("submitExam").addEventListener("click", async () => {
   if (q2 && q2.value === "6") score++;
 
   document.getElementById("result").innerText =
-    "Your score: " + score + " / 2";
+    "Your score: " + score + " / " + total;
 
   const user = auth.currentUser;
   if (!user) {
@@ -171,27 +173,28 @@ document.getElementById("submitExam").addEventListener("click", async () => {
   }
 
   await addDoc(collection(db, "examResults"), {
-  uid: auth.currentUser.uid, 
-  email: auth.currentUser.email,
-  score: score,
-  total: total,
-  date: new Date()
-});
-
+    uid: user.uid,
+    email: user.email,
+    score: score,
+    total: total,
+    date: serverTimestamp()
+  });
 
   alert("Result saved!");
-  loadResults(user.email);
+  loadResults();
 });
 
 // Cargar historial
-async function loadResults(email) {
+async function loadResults() {
   const resultsList = document.getElementById("resultsList");
   resultsList.innerHTML = "";
 
+  const user = auth.currentUser;
+  if (!user) return;
+
   const q = query(
-    
     collection(db, "examResults"),
-    where("uid", "==", auth.currentUser.uid)
+    where("uid", "==", user.uid),
     orderBy("date", "desc")
   );
 
@@ -200,10 +203,20 @@ async function loadResults(email) {
   snapshot.forEach((doc) => {
     const data = doc.data();
     const li = document.createElement("li");
+
+    let formattedDate = "Loading...";
+    if (data.date && data.date.seconds) {
+      formattedDate = new Date(data.date.seconds * 1000).toLocaleString();
+    }
+
     li.textContent =
       "Score: " + data.score + "/" + data.total +
-      " | " + new Date(data.date.seconds * 1000).toLocaleString();
+      " | " + formattedDate;
+
     resultsList.appendChild(li);
   });
 }
 </script>
+
+</body>
+</html>
