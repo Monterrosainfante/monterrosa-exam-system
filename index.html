@@ -116,10 +116,8 @@ onAuthStateChanged(auth, async (user) => {
   const logoutBtn = document.getElementById("logoutBtn");
 
   if (user) {
-
     let userDoc = await getDoc(doc(db, "users", user.uid));
 
-    // Si el usuario no tiene documento, lo creamos automáticamente
     if (!userDoc.exists()) {
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
@@ -138,9 +136,7 @@ onAuthStateChanged(auth, async (user) => {
       examSection.style.display = "block";
       resultsSection.style.display = "block";
       loadResults();
-    }
-
-    if (role === "admin") {
+    } else if (role === "admin") {
       examSection.style.display = "none";
       resultsSection.style.display = "block";
       loadAllResults();
@@ -152,6 +148,7 @@ onAuthStateChanged(auth, async (user) => {
     logoutBtn.style.display = "none";
   }
 });
+  
 
 // Register
 document.getElementById("registerBtn").addEventListener("click", async () => {
