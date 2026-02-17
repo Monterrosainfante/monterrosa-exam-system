@@ -224,9 +224,10 @@ if (assignStudentBtn) {
 async function loadTeacherClasses() {
 
   const list = document.getElementById("myClasses");
-  if (!list) return;
+  const select = document.getElementById("teacherClassSelect");
 
-  list.innerHTML = "";
+  if (list) list.innerHTML = "";
+  if (select) select.innerHTML = "";
 
   const user = auth.currentUser;
   if (!user) return;
@@ -241,9 +242,37 @@ async function loadTeacherClasses() {
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
 
-    const li = document.createElement("li");
-    li.textContent = data.name + " - Grade " + data.grade;
-    list.appendChild(li);
+    if (list) {
+      const li = document.createElement("li");
+      li.textContent = data.name + " - Grade " + data.grade;
+      list.appendChild(li);
+    }
+
+    if (select) {
+      const option = document.createElement("option");
+      option.value = docSnap.id;
+      option.textContent = data.name;
+      select.appendChild(option);
+    }
+  });
+}
+const launchExamBtn = document.getElementById("launchExamBtn");
+
+if (launchExamBtn) {
+  launchExamBtn.addEventListener("click", async () => {
+
+    const classId = document.getElementById("teacherClassSelect").value;
+    const examId = document.getElementById("examSelect").value;
+
+    await addDoc(collection(db, "launchedExams"), {
+      examId,
+      classId,
+      teacherId: auth.currentUser.uid,
+      status: "active",
+      launchedAt: serverTimestamp()
+    });
+
+    alert("Exam Launched!");
   });
 }
 
