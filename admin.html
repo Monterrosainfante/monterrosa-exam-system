@@ -1,1 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="navbar">
+  <h2>Admin Dashboard</h2>
+  <button id="logoutBtn">Logout</button>
+</div>
+
+<div class="card">
+  <h3>Create Exam</h3>
+  <input type="text" id="examTitle" placeholder="Exam Title">
+  <textarea id="examDescription" placeholder="Description"></textarea>
+  <button id="createExamBtn">Create Exam</button>
+</div>
+
+<div class="card">
+  <h3>Existing Exams</h3>
+  <ul id="examList"></ul>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
 
