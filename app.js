@@ -287,3 +287,28 @@ if (logoutBtn) {
   });
 }
 
+import { addDoc, collection } from 
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+document.addEventListener("click", async (e) => {
+
+  if (e.target.id === "createExamBtn") {
+
+    const title = document.getElementById("examTitle").value;
+
+    if (!title) {
+      alert("Enter a title");
+      return;
+    }
+
+    await addDoc(collection(db, "exams"), {
+      title: title,
+      teacherId: auth.currentUser.uid,
+      classId: "classA",
+      launched: false,
+      createdAt: new Date()
+    });
+
+    alert("Exam Created ✅");
+  }
+
+});
