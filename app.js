@@ -38,5 +38,15 @@ async function loadClasses() {
  if (window.location.pathname.includes("admin.html")) {
   loadClasses();
 }
+const classSelect = document.getElementById("classSelect");
+if (classSelect) {
+  classSelect.innerHTML = "";
+}
+if (classSelect) {
+  const option = document.createElement("option");
+  option.value = docSnap.id;
+  option.textContent = data.name;
+  classSelect.appendChild(option);
+}
 
 
