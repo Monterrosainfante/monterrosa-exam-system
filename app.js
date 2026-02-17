@@ -48,5 +48,42 @@ if (classSelect) {
   option.textContent = data.name;
   classSelect.appendChild(option);
 }
+async function loadStudents() {
+  const studentSelect = document.getElementById("studentSelect");
+  if (!studentSelect) return;
 
+  studentSelect.innerHTML = "";
+
+  const snapshot = await getDocs(collection(db, "users"));
+
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+
+    if (data.role === "student") {
+      const option = document.createElement("option");
+      option.value = docSnap.id;
+      option.textContent = data.email;
+      studentSelect.appendChild(option);
+    }
+    if (window.location.pathname.includes("admin.html")) {
+  loadClasses();
+  loadStudents();
+}
+import { updateDoc, doc, arrayUnion } from "firebase/firestore";
+
+const assignStudentBtn = document.getElementById("assignStudentBtn");
+
+if (assignStudentBtn) {
+  assignStudentBtn.addEventListener("click", async () => {
+
+    const classId = document.getElementById("classSelect").value;
+    const studentId = document.getElementById("studentSelect").value;
+
+    await updateDoc(doc(db, "classes", classId), {
+      students: arrayUnion(studentId)
+    });
+
+    alert("Student assigned successfully!");
+  });
+}
 
