@@ -32,6 +32,9 @@ const firebaseConfig = {
   apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
+  storageBucket: "monterrosa-exam-system.firebasestorage.app",
+  messagingSenderId: "160412525297",
+  appId: "1:160412525297:web:9170ff5a518e6c083e7f50"
 };
 
 const app = initializeApp(firebaseConfig);
