@@ -331,3 +331,60 @@ if (logoutBtn) {
     window.location.href = "index.html";
   });
 }
+async function loadStudentExams(user) {
+
+  const container = document.getElementById("availableExams");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  // 1️⃣ Buscar clase del estudiante
+  const classQuery = query(
+    collection(db, "classes"),
+    where("students", "array-contains", user.uid)
+  );
+
+  const classSnapshot = await getDocs(classQuery);
+
+  if (classSnapshot.empty) {
+    container.innerHTML = "<p>No class assigned.</p>";
+    return;
+  }
+
+  const classId = classSnapshot.docs[0].id;
+
+  // 2️⃣ Buscar exámenes lanzados para esa clase
+  const examQuery = query(
+    collection(db, "launchedExams"),
+    where("classId", "==", classId),
+    where("status", "==", "active")
+  );
+
+  const examSnapshot = await getDocs(examQuery);
+
+  if (examSnapshot.empty) {
+    container.innerHTML = "<p>No active exams.</p>";
+    return;
+  }
+  if (role === "student" && path.includes("student.html")) {
+  loadStudentExams(user);
+}
+
+
+  // 3️⃣ Mostrar exámenes
+  for (const docSnap of examSnapshot.docs) {
+
+    const data = docSnap.data();
+
+    container.innerHTML += `
+      <div class="card">
+        <p>Exam ID: ${data.examId}</p>
+        <button onclick="startExam('${data.examId}')">Start</button>
+      </div>
+    `;
+  }
+}
+window.startExam = function(examId) {
+  alert("Starting exam: " + examId);
+};
+
