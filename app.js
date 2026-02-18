@@ -285,61 +285,50 @@ async function loadStudentExams(user) {
 
 window.startExam = async function(examId) {
 
-  const examDoc = await getDoc(doc(db, "exams", examId));
+  const user = auth.currentUser;
+  if (!user) return;
 
-  if (!examDoc.exists()) {
-    alert("Exam not found");
+  const sessionQuery = query(
+    collection(db, "examSessions"),
+    where("examId", "==", examId),
+    where("studentId", "==", user.uid),
+    where("status", "==", "in-progress")
+  );
+
+  const sessionSnapshot = await getDocs(sessionQuery);
+
+  let endTime;
+
+  if (!sessionSnapshot.empty) {
+    // Ya existe sesión → continuar
+    const sessionData = sessionSnapshot.docs[0].data();
+    endTime = sessionData.endTime.toDate();
+  } else {
+    // Crear nueva sesión
+    const durationMinutes = 5;
+    const now = new Date();
+    endTime = new Date(now.getTime() + durationMinutes * 60000);
+
+    await addDoc(collection(db, "examSessions"), {
+      examId,
+      studentId: user.uid,
+      startTime: serverTimestamp(),
+      endTime: endTime,
+      status: "in-progress"
+    });
+  }
+
+  const now = new Date();
+  timeLeft = Math.floor((endTime - now) / 1000);
+
+  if (timeLeft <= 0) {
+    alert("Time already expired.");
+    await submitExam();
     return;
   }
 
-  const examData = examDoc.data();
-
-  currentExamId = examId;
-
-  const container = document.getElementById("examContainer");
-  const questionsDiv = document.getElementById("questionsContainer");
-  const title = document.getElementById("examTitle");
-
-  container.style.display = "block";
-  questionsDiv.innerHTML = "";
-  title.textContent = examData.title;
-
-  // ⏳ SET TIMER (ejemplo: 5 minutos)
-  timeLeft = 300; // 300 segundos = 5 min
+  loadExamContent(examId);
   startTimer();
-
-  examData.questions.forEach((q, index) => {
-
-    let html = `<div class="card"><p><b>${q.question}</b></p>`;
-
-    if (q.type === "multiple") {
-      q.options.forEach(option => {
-        html += `
-          <label>
-            <input type="radio" name="q${index}" value="${option}">
-            ${option}
-          </label><br>
-        `;
-      });
-    }
-
-    if (q.type === "truefalse") {
-      html += `
-        <label><input type="radio" name="q${index}" value="true"> True</label><br>
-        <label><input type="radio" name="q${index}" value="false"> False</label>
-      `;
-    }
-
-    if (q.type === "short") {
-      html += `
-        <input type="text" name="q${index}" placeholder="Your answer">
-      `;
-    }
-
-    html += `</div>`;
-
-    questionsDiv.innerHTML += html;
-  });
 };
 
 
@@ -384,8 +373,23 @@ if (submitExamBtn) {
 
   submitExamBtn.addEventListener("click", async () => {
     await submitExam();
+ // Marcar sesión como completada
+const sessionQuery = query(
+  collection(db, "examSessions"),
+  where("examId", "==", currentExamId),
+  where("studentId", "==", auth.currentUser.uid),
+  where("status", "==", "in-progress")
+);
+
+const sessionSnapshot = await getDocs(sessionQuery);
+
+if (!sessionSnapshot.empty) {
+  const sessionDoc = sessionSnapshot.docs[0];
+  await updateDoc(doc(db, "examSessions", sessionDoc.id), {
+    status: "completed"
   });
 }
+
 
 
 async function submitExam() {
@@ -426,6 +430,56 @@ async function submitExam() {
   submitExamBtn.disabled = true;
 
   currentExamId = null;
+}
+
+async function loadExamContent(examId) {
+
+  const examDoc = await getDoc(doc(db, "exams", examId));
+  if (!examDoc.exists()) return;
+
+  const examData = examDoc.data();
+
+  currentExamId = examId;
+
+  const container = document.getElementById("examContainer");
+  const questionsDiv = document.getElementById("questionsContainer");
+  const title = document.getElementById("examTitle");
+
+  container.style.display = "block";
+  questionsDiv.innerHTML = "";
+  title.textContent = examData.title;
+
+  examData.questions.forEach((q, index) => {
+
+    let html = `<div class="card"><p><b>${q.question}</b></p>`;
+
+    if (q.type === "multiple") {
+      q.options.forEach(option => {
+        html += `
+          <label>
+            <input type="radio" name="q${index}" value="${option}">
+            ${option}
+          </label><br>
+        `;
+      });
+    }
+
+    if (q.type === "truefalse") {
+      html += `
+        <label><input type="radio" name="q${index}" value="true"> True</label><br>
+        <label><input type="radio" name="q${index}" value="false"> False</label>
+      `;
+    }
+
+    if (q.type === "short") {
+      html += `
+        <input type="text" name="q${index}">
+      `;
+    }
+
+    html += `</div>`;
+    questionsDiv.innerHTML += html;
+  });
 }
 
 
