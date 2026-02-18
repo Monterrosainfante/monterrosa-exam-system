@@ -204,7 +204,14 @@ async function loadTeacherClasses() {
 }
 
 
-// 🔥 ================= STUDENT =================
+// 🔥 ================= STUDENT SYSTEM =================
+
+let currentExamId = null;
+let timerInterval = null;
+let timeLeft = 0;
+
+
+// 🔥 LOAD AVAILABLE EXAMS
 
 async function loadStudentExams(user) {
 
@@ -243,7 +250,26 @@ async function loadStudentExams(user) {
   }
 
   for (const docSnap of examSnapshot.docs) {
+
     const data = docSnap.data();
+
+    // Verificar si ya entregó
+    const resultQuery = query(
+      collection(db, "examResults"),
+      where("examId", "==", data.examId),
+      where("studentId", "==", user.uid)
+    );
+
+    const resultSnapshot = await getDocs(resultQuery);
+
+    if (!resultSnapshot.empty) {
+      container.innerHTML += `
+        <div class="card">
+          <p>Exam Completed ✅</p>
+        </div>
+      `;
+      continue;
+    }
 
     container.innerHTML += `
       <div class="card">
@@ -254,9 +280,153 @@ async function loadStudentExams(user) {
   }
 }
 
-window.startExam = function(examId) {
-  alert("Starting exam: " + examId);
+
+// 🔥 START EXAM
+
+window.startExam = async function(examId) {
+
+  const examDoc = await getDoc(doc(db, "exams", examId));
+
+  if (!examDoc.exists()) {
+    alert("Exam not found");
+    return;
+  }
+
+  const examData = examDoc.data();
+
+  currentExamId = examId;
+
+  const container = document.getElementById("examContainer");
+  const questionsDiv = document.getElementById("questionsContainer");
+  const title = document.getElementById("examTitle");
+
+  container.style.display = "block";
+  questionsDiv.innerHTML = "";
+  title.textContent = examData.title;
+
+  // ⏳ SET TIMER (ejemplo: 5 minutos)
+  timeLeft = 300; // 300 segundos = 5 min
+  startTimer();
+
+  examData.questions.forEach((q, index) => {
+
+    let html = `<div class="card"><p><b>${q.question}</b></p>`;
+
+    if (q.type === "multiple") {
+      q.options.forEach(option => {
+        html += `
+          <label>
+            <input type="radio" name="q${index}" value="${option}">
+            ${option}
+          </label><br>
+        `;
+      });
+    }
+
+    if (q.type === "truefalse") {
+      html += `
+        <label><input type="radio" name="q${index}" value="true"> True</label><br>
+        <label><input type="radio" name="q${index}" value="false"> False</label>
+      `;
+    }
+
+    if (q.type === "short") {
+      html += `
+        <input type="text" name="q${index}" placeholder="Your answer">
+      `;
+    }
+
+    html += `</div>`;
+
+    questionsDiv.innerHTML += html;
+  });
 };
+
+
+// 🔥 TIMER FUNCTION
+
+function startTimer() {
+
+  const timerDisplay = document.getElementById("timer");
+
+  timerInterval = setInterval(() => {
+
+    let minutes = Math.floor(timeLeft / 60);
+    let seconds = timeLeft % 60;
+
+    timerDisplay.textContent =
+      `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+    timeLeft--;
+
+    if (timeLeft < 0) {
+      clearInterval(timerInterval);
+      autoSubmitExam();
+    }
+
+  }, 1000);
+}
+
+
+// 🔥 AUTO SUBMIT WHEN TIME ENDS
+
+async function autoSubmitExam() {
+  alert("Time is up! Submitting automatically.");
+  await submitExam();
+}
+
+
+// 🔥 SUBMIT EXAM
+
+const submitExamBtn = document.getElementById("submitExamBtn");
+
+if (submitExamBtn) {
+
+  submitExamBtn.addEventListener("click", async () => {
+    await submitExam();
+  });
+}
+
+
+async function submitExam() {
+
+  if (!currentExamId) return;
+
+  clearInterval(timerInterval);
+
+  const examDoc = await getDoc(doc(db, "exams", currentExamId));
+  const examData = examDoc.data();
+
+  let score = 0;
+
+  examData.questions.forEach((q, index) => {
+
+    const input =
+      document.querySelector(`[name="q${index}"]:checked`) ||
+      document.querySelector(`[name="q${index}"]`);
+
+    if (!input) return;
+
+    if (input.value?.toLowerCase() === q.correctAnswer.toLowerCase()) {
+      score++;
+    }
+  });
+
+  await addDoc(collection(db, "examResults"), {
+    examId: currentExamId,
+    studentId: auth.currentUser.uid,
+    score,
+    total: examData.questions.length,
+    submittedAt: serverTimestamp()
+  });
+
+  alert(`Your score: ${score} / ${examData.questions.length}`);
+
+  document.getElementById("examContainer").style.display = "none";
+  submitExamBtn.disabled = true;
+
+  currentExamId = null;
+}
 
 
 // 🔥 ================= LOGOUT =================
