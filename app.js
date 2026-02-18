@@ -1,11 +1,13 @@
-// 🔥 FIREBASE IMPORTS (SIEMPRE ARRIBA)
+// 🔥 ================= FIREBASE IMPORTS (SIEMPRE ARRIBA) =================
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
   getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 import {
@@ -24,9 +26,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 
-// 🔥 FIREBASE CONFIG
+// 🔥 ================= FIREBASE CONFIG =================
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",
+  apiKey: "TU_API_KEY_AQUI",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
 };
@@ -36,8 +39,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 
-
-// ================= LOGIN / REGISTER =================
+// 🔥 ================= LOGIN / REGISTER =================
 
 const loginBtn = document.getElementById("loginBtn");
 const registerBtn = document.getElementById("registerBtn");
@@ -78,8 +80,7 @@ if (registerBtn) {
 }
 
 
-
-// ================= AUTH REDIRECTION =================
+// 🔥 ================= AUTH REDIRECTION =================
 
 onAuthStateChanged(auth, async (user) => {
 
@@ -90,8 +91,10 @@ onAuthStateChanged(auth, async (user) => {
 
   const role = userDoc.data().role;
 
-  // Redirigir solo desde index
-  if (window.location.pathname.includes("index.html") || window.location.pathname.endsWith("/")) {
+  const path = window.location.pathname;
+
+  // Redirect only from index
+  if (path.includes("index.html") || path.endsWith("/")) {
 
     if (role === "admin") {
       window.location.href = "admin.html";
@@ -102,21 +105,20 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
 
-  // Si estamos en admin
-  if (role === "admin" && window.location.pathname.includes("admin.html")) {
+  // ADMIN PAGE
+  if (role === "admin" && path.includes("admin.html")) {
     loadClasses();
     loadStudents();
   }
 
-  // Si estamos en teacher
-  if (role === "teacher" && window.location.pathname.includes("teacher.html")) {
+  // TEACHER PAGE
+  if (role === "teacher" && path.includes("teacher.html")) {
     loadTeacherClasses();
   }
 });
 
 
-
-// ================= ADMIN - CREATE CLASS =================
+// 🔥 ================= ADMIN - CREATE CLASS =================
 
 const createClassBtn = document.getElementById("createClassBtn");
 
@@ -126,6 +128,11 @@ if (createClassBtn) {
     const name = document.getElementById("className").value;
     const grade = document.getElementById("classGrade").value;
     const teacherId = document.getElementById("teacherUID").value;
+
+    if (!name || !grade || !teacherId) {
+      alert("Complete all fields");
+      return;
+    }
 
     await addDoc(collection(db, "classes"), {
       name,
@@ -141,8 +148,7 @@ if (createClassBtn) {
 }
 
 
-
-// ================= LOAD CLASSES (ADMIN) =================
+// 🔥 ================= LOAD CLASSES (ADMIN) =================
 
 async function loadClasses() {
 
@@ -159,7 +165,7 @@ async function loadClasses() {
 
     if (classList) {
       const li = document.createElement("li");
-      li.textContent = data.name + " - Grade " + data.grade;
+      li.textContent = `${data.name} - Grade ${data.grade}`;
       classList.appendChild(li);
     }
 
@@ -173,8 +179,7 @@ async function loadClasses() {
 }
 
 
-
-// ================= LOAD STUDENTS (ADMIN) =================
+// 🔥 ================= LOAD STUDENTS (ADMIN) =================
 
 async function loadStudents() {
 
@@ -198,8 +203,7 @@ async function loadStudents() {
 }
 
 
-
-// ================= ASSIGN STUDENT =================
+// 🔥 ================= ASSIGN STUDENT TO CLASS =================
 
 const assignStudentBtn = document.getElementById("assignStudentBtn");
 
@@ -208,6 +212,11 @@ if (assignStudentBtn) {
 
     const classId = document.getElementById("classSelect").value;
     const studentId = document.getElementById("studentSelect").value;
+
+    if (!classId || !studentId) {
+      alert("Select class and student");
+      return;
+    }
 
     await updateDoc(doc(db, "classes", classId), {
       students: arrayUnion(studentId)
@@ -218,8 +227,7 @@ if (assignStudentBtn) {
 }
 
 
-
-// ================= TEACHER - LOAD OWN CLASSES =================
+// 🔥 ================= TEACHER - LOAD OWN CLASSES =================
 
 async function loadTeacherClasses() {
 
@@ -244,7 +252,7 @@ async function loadTeacherClasses() {
 
     if (list) {
       const li = document.createElement("li");
-      li.textContent = data.name + " - Grade " + data.grade;
+      li.textContent = `${data.name} - Grade ${data.grade}`;
       list.appendChild(li);
     }
 
@@ -256,6 +264,37 @@ async function loadTeacherClasses() {
     }
   });
 }
+
+
+// 🔥 ================= TEACHER - CREATE EXAM =================
+
+document.addEventListener("click", async (e) => {
+
+  if (e.target.id === "createExamBtn") {
+
+    const title = document.getElementById("examTitle").value;
+    const classId = document.getElementById("teacherClassSelect")?.value;
+
+    if (!title || !classId) {
+      alert("Enter title and select class");
+      return;
+    }
+
+    await addDoc(collection(db, "exams"), {
+      title,
+      teacherId: auth.currentUser.uid,
+      classId,
+      launched: false,
+      createdAt: serverTimestamp()
+    });
+
+    alert("Exam Created ✅");
+  }
+});
+
+
+// 🔥 ================= TEACHER - LAUNCH EXAM =================
+
 const launchExamBtn = document.getElementById("launchExamBtn");
 
 if (launchExamBtn) {
@@ -263,6 +302,11 @@ if (launchExamBtn) {
 
     const classId = document.getElementById("teacherClassSelect").value;
     const examId = document.getElementById("examSelect").value;
+
+    if (!classId || !examId) {
+      alert("Select class and exam");
+      return;
+    }
 
     await addDoc(collection(db, "launchedExams"), {
       examId,
@@ -276,7 +320,8 @@ if (launchExamBtn) {
   });
 }
 
-import { signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// 🔥 ================= LOGOUT =================
 
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -286,27 +331,3 @@ if (logoutBtn) {
     window.location.href = "index.html";
   });
 }
-
-document.addEventListener("click", async (e) => {
-
-  if (e.target.id === "createExamBtn") {
-
-    const title = document.getElementById("examTitle").value;
-
-    if (!title) {
-      alert("Enter a title");
-      return;
-    }
-
-    await addDoc(collection(db, "exams"), {
-      title: title,
-      teacherId: auth.currentUser.uid,
-      classId: "classA",
-      launched: false,
-      createdAt: serverTimestamp()
-    });
-
-    alert("Exam Created ✅");
-  }
-
-});
