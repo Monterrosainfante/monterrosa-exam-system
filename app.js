@@ -287,8 +287,6 @@ if (logoutBtn) {
   });
 }
 
-import { addDoc, collection } from 
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 document.addEventListener("click", async (e) => {
 
   if (e.target.id === "createExamBtn") {
@@ -305,7 +303,7 @@ document.addEventListener("click", async (e) => {
       teacherId: auth.currentUser.uid,
       classId: "classA",
       launched: false,
-      createdAt: new Date()
+      createdAt: serverTimestamp()
     });
 
     alert("Exam Created ✅");
