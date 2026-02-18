@@ -1,4 +1,4 @@
-// 🔥 ================= FIREBASE IMPORTS (SIEMPRE ARRIBA) =================
+// 🔥 ================= FIREBASE IMPORTS =================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
@@ -29,7 +29,7 @@ import {
 // 🔥 ================= FIREBASE CONFIG =================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",,
+  apiKey: "TU_API_KEY_AQUI",
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
 };
@@ -80,109 +80,68 @@ if (registerBtn) {
 }
 
 
-// 🔥 ================= AUTH REDIRECTION =================
+// 🔥 ================= AUTH STATE =================
 
 onAuthStateChanged(auth, async (user) => {
 
-  if (!user) return;
+  const path = window.location.pathname;
+
+  if (!user) {
+    if (!path.includes("index.html")) {
+      window.location.href = "index.html";
+    }
+    return;
+  }
 
   const userDoc = await getDoc(doc(db, "users", user.uid));
   if (!userDoc.exists()) return;
 
   const role = userDoc.data().role;
 
-  const path = window.location.pathname;
-
-  // Redirect only from index
+  // Redirect from index
   if (path.includes("index.html") || path.endsWith("/")) {
-
-    if (role === "admin") {
-      window.location.href = "admin.html";
-    } else if (role === "teacher") {
-      window.location.href = "teacher.html";
-    } else if (role === "student") {
-      window.location.href = "student.html";
-    }
+    if (role === "admin") window.location.href = "admin.html";
+    if (role === "teacher") window.location.href = "teacher.html";
+    if (role === "student") window.location.href = "student.html";
   }
 
-  // ADMIN PAGE
+  // Admin page
   if (role === "admin" && path.includes("admin.html")) {
     loadClasses();
     loadStudents();
   }
 
-  // TEACHER PAGE
+  // Teacher page
   if (role === "teacher" && path.includes("teacher.html")) {
     loadTeacherClasses();
+  }
+
+  // Student page
+  if (role === "student" && path.includes("student.html")) {
+    loadStudentExams(user);
   }
 });
 
 
-// 🔥 ================= ADMIN - CREATE CLASS =================
-
-const createClassBtn = document.getElementById("createClassBtn");
-
-if (createClassBtn) {
-  createClassBtn.addEventListener("click", async () => {
-
-    const name = document.getElementById("className").value;
-    const grade = document.getElementById("classGrade").value;
-    const teacherId = document.getElementById("teacherUID").value;
-
-    if (!name || !grade || !teacherId) {
-      alert("Complete all fields");
-      return;
-    }
-
-    await addDoc(collection(db, "classes"), {
-      name,
-      grade,
-      teacherId,
-      students: [],
-      createdAt: serverTimestamp()
-    });
-
-    alert("Class created!");
-    loadClasses();
-  });
-}
-
-
-// 🔥 ================= LOAD CLASSES (ADMIN) =================
+// 🔥 ================= ADMIN =================
 
 async function loadClasses() {
-
   const classList = document.getElementById("classList");
-  const classSelect = document.getElementById("classSelect");
+  if (!classList) return;
 
-  if (classList) classList.innerHTML = "";
-  if (classSelect) classSelect.innerHTML = "";
+  classList.innerHTML = "";
 
   const snapshot = await getDocs(collection(db, "classes"));
 
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
-
-    if (classList) {
-      const li = document.createElement("li");
-      li.textContent = `${data.name} - Grade ${data.grade}`;
-      classList.appendChild(li);
-    }
-
-    if (classSelect) {
-      const option = document.createElement("option");
-      option.value = docSnap.id;
-      option.textContent = data.name;
-      classSelect.appendChild(option);
-    }
+    const li = document.createElement("li");
+    li.textContent = `${data.name} - Grade ${data.grade}`;
+    classList.appendChild(li);
   });
 }
 
-
-// 🔥 ================= LOAD STUDENTS (ADMIN) =================
-
 async function loadStudents() {
-
   const studentSelect = document.getElementById("studentSelect");
   if (!studentSelect) return;
 
@@ -203,31 +162,7 @@ async function loadStudents() {
 }
 
 
-// 🔥 ================= ASSIGN STUDENT TO CLASS =================
-
-const assignStudentBtn = document.getElementById("assignStudentBtn");
-
-if (assignStudentBtn) {
-  assignStudentBtn.addEventListener("click", async () => {
-
-    const classId = document.getElementById("classSelect").value;
-    const studentId = document.getElementById("studentSelect").value;
-
-    if (!classId || !studentId) {
-      alert("Select class and student");
-      return;
-    }
-
-    await updateDoc(doc(db, "classes", classId), {
-      students: arrayUnion(studentId)
-    });
-
-    alert("Student assigned successfully!");
-  });
-}
-
-
-// 🔥 ================= TEACHER - LOAD OWN CLASSES =================
+// 🔥 ================= TEACHER =================
 
 async function loadTeacherClasses() {
 
@@ -266,71 +201,8 @@ async function loadTeacherClasses() {
 }
 
 
-// 🔥 ================= TEACHER - CREATE EXAM =================
+// 🔥 ================= STUDENT =================
 
-document.addEventListener("click", async (e) => {
-
-  if (e.target.id === "createExamBtn") {
-
-    const title = document.getElementById("examTitle").value;
-    const classId = document.getElementById("teacherClassSelect")?.value;
-
-    if (!title || !classId) {
-      alert("Enter title and select class");
-      return;
-    }
-
-    await addDoc(collection(db, "exams"), {
-      title,
-      teacherId: auth.currentUser.uid,
-      classId,
-      launched: false,
-      createdAt: serverTimestamp()
-    });
-
-    alert("Exam Created ✅");
-  }
-});
-
-
-// 🔥 ================= TEACHER - LAUNCH EXAM =================
-
-const launchExamBtn = document.getElementById("launchExamBtn");
-
-if (launchExamBtn) {
-  launchExamBtn.addEventListener("click", async () => {
-
-    const classId = document.getElementById("teacherClassSelect").value;
-    const examId = document.getElementById("examSelect").value;
-
-    if (!classId || !examId) {
-      alert("Select class and exam");
-      return;
-    }
-
-    await addDoc(collection(db, "launchedExams"), {
-      examId,
-      classId,
-      teacherId: auth.currentUser.uid,
-      status: "active",
-      launchedAt: serverTimestamp()
-    });
-
-    alert("Exam Launched!");
-  });
-}
-
-
-// 🔥 ================= LOGOUT =================
-
-const logoutBtn = document.getElementById("logoutBtn");
-
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    await signOut(auth);
-    window.location.href = "index.html";
-  });
-}
 async function loadStudentExams(user) {
 
   const container = document.getElementById("availableExams");
@@ -338,7 +210,7 @@ async function loadStudentExams(user) {
 
   container.innerHTML = "";
 
-  // 1️⃣ Buscar clase del estudiante
+  // Buscar clase del estudiante
   const classQuery = query(
     collection(db, "classes"),
     where("students", "array-contains", user.uid)
@@ -353,7 +225,7 @@ async function loadStudentExams(user) {
 
   const classId = classSnapshot.docs[0].id;
 
-  // 2️⃣ Buscar exámenes lanzados para esa clase
+  // Buscar exámenes activos
   const examQuery = query(
     collection(db, "launchedExams"),
     where("classId", "==", classId),
@@ -366,14 +238,8 @@ async function loadStudentExams(user) {
     container.innerHTML = "<p>No active exams.</p>";
     return;
   }
-  if (role === "student" && path.includes("student.html")) {
-  loadStudentExams(user);
-}
 
-
-  // 3️⃣ Mostrar exámenes
   for (const docSnap of examSnapshot.docs) {
-
     const data = docSnap.data();
 
     container.innerHTML += `
@@ -384,7 +250,19 @@ async function loadStudentExams(user) {
     `;
   }
 }
+
 window.startExam = function(examId) {
   alert("Starting exam: " + examId);
 };
 
+
+// 🔥 ================= LOGOUT =================
+
+const logoutBtn = document.getElementById("logoutBtn");
+
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+}
