@@ -29,7 +29,7 @@ import {
 // 🔥 ================= FIREBASE CONFIG =================
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY_AQUI",
+  apiKey: "AIzaSyDshlcOrBShy1mhAXUoc5-Ppo3GqsbJHbs",,
   authDomain: "monterrosa-exam-system.firebaseapp.com",
   projectId: "monterrosa-exam-system",
 };
