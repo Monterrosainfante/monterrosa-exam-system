@@ -212,7 +212,6 @@ let timeLeft = 0;
 
 
 // 🔥 LOAD AVAILABLE EXAMS
-
 async function loadStudentExams(user) {
 
   const container = document.getElementById("availableExams");
@@ -220,7 +219,6 @@ async function loadStudentExams(user) {
 
   container.innerHTML = "";
 
-  // Buscar clase del estudiante
   const classQuery = query(
     collection(db, "classes"),
     where("students", "array-contains", user.uid)
@@ -235,7 +233,6 @@ async function loadStudentExams(user) {
 
   const classId = classSnapshot.docs[0].id;
 
-  // Buscar exámenes activos
   const examQuery = query(
     collection(db, "launchedExams"),
     where("classId", "==", classId),
@@ -253,7 +250,6 @@ async function loadStudentExams(user) {
 
     const data = docSnap.data();
 
-    // Verificar si ya entregó
     const resultQuery = query(
       collection(db, "examResults"),
       where("examId", "==", data.examId),
@@ -265,7 +261,7 @@ async function loadStudentExams(user) {
     if (!resultSnapshot.empty) {
       container.innerHTML += `
         <div class="card">
-          <p>Exam Completed ✅</p>
+          <p>${data.examId} - Completed ✅</p>
         </div>
       `;
       continue;
@@ -273,7 +269,7 @@ async function loadStudentExams(user) {
 
     container.innerHTML += `
       <div class="card">
-        <p>Exam ID: ${data.examId}</p>
+        <p>${data.examId}</p>
         <button onclick="startExam('${data.examId}')">Start</button>
       </div>
     `;
@@ -282,11 +278,12 @@ async function loadStudentExams(user) {
 
 
 // 🔥 START EXAM
-
-window.startExam = async function(examId) {
+window.startExam = async function (examId) {
 
   const user = auth.currentUser;
   if (!user) return;
+
+  currentExamId = examId;
 
   const sessionQuery = query(
     collection(db, "examSessions"),
@@ -300,11 +297,9 @@ window.startExam = async function(examId) {
   let endTime;
 
   if (!sessionSnapshot.empty) {
-    // Ya existe sesión → continuar
-    const sessionData = sessionSnapshot.docs[0].data();
-    endTime = sessionData.endTime.toDate();
+    endTime = sessionSnapshot.docs[0].data().endTime.toDate();
   } else {
-    // Crear nueva sesión
+
     const durationMinutes = 5;
     const now = new Date();
     endTime = new Date(now.getTime() + durationMinutes * 60000);
@@ -322,21 +317,22 @@ window.startExam = async function(examId) {
   timeLeft = Math.floor((endTime - now) / 1000);
 
   if (timeLeft <= 0) {
-    alert("Time already expired.");
+    alert("Time expired.");
     await submitExam();
     return;
   }
 
-  loadExamContent(examId);
+  await loadExamContent(examId);
   startTimer();
 };
 
 
-// 🔥 TIMER FUNCTION
-
+// 🔥 TIMER
 function startTimer() {
 
   const timerDisplay = document.getElementById("timer");
+
+  clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
 
@@ -357,8 +353,7 @@ function startTimer() {
 }
 
 
-// 🔥 AUTO SUBMIT WHEN TIME ENDS
-
+// 🔥 AUTO SUBMIT
 async function autoSubmitExam() {
   alert("Time is up! Submitting automatically.");
   await submitExam();
@@ -366,80 +361,75 @@ async function autoSubmitExam() {
 
 
 // 🔥 SUBMIT EXAM
-
-const submitExamBtn = document.getElementById("submitExamBtn");
-
-if (submitExamBtn) {
-
-  submitExamBtn.addEventListener("click", async () => {
-    await submitExam();
- // Marcar sesión como completada
-const sessionQuery = query(
-  collection(db, "examSessions"),
-  where("examId", "==", currentExamId),
-  where("studentId", "==", auth.currentUser.uid),
-  where("status", "==", "in-progress")
-);
-
-const sessionSnapshot = await getDocs(sessionQuery);
-
-if (!sessionSnapshot.empty) {
-  const sessionDoc = sessionSnapshot.docs[0];
-  await updateDoc(doc(db, "examSessions", sessionDoc.id), {
-    status: "completed"
-  });
-}
-
-
-
 async function submitExam() {
 
   if (!currentExamId) return;
 
   clearInterval(timerInterval);
 
+  const user = auth.currentUser;
+
   const examDoc = await getDoc(doc(db, "exams", currentExamId));
+  if (!examDoc.exists()) return;
+
   const examData = examDoc.data();
 
   let score = 0;
 
   examData.questions.forEach((q, index) => {
 
-    const input =
+    const selected =
       document.querySelector(`[name="q${index}"]:checked`) ||
       document.querySelector(`[name="q${index}"]`);
 
-    if (!input) return;
+    if (!selected) return;
 
-    if (input.value?.toLowerCase() === q.correctAnswer.toLowerCase()) {
+    if (selected.value?.toLowerCase() === q.correctAnswer.toLowerCase()) {
       score++;
     }
   });
 
   await addDoc(collection(db, "examResults"), {
     examId: currentExamId,
-    studentId: auth.currentUser.uid,
+    studentId: user.uid,
     score,
     total: examData.questions.length,
     submittedAt: serverTimestamp()
   });
 
+  // 🔥 Marcar sesión como completada
+  const sessionQuery = query(
+    collection(db, "examSessions"),
+    where("examId", "==", currentExamId),
+    where("studentId", "==", user.uid),
+    where("status", "==", "in-progress")
+  );
+
+  const sessionSnapshot = await getDocs(sessionQuery);
+
+  if (!sessionSnapshot.empty) {
+    await updateDoc(
+      doc(db, "examSessions", sessionSnapshot.docs[0].id),
+      { status: "completed" }
+    );
+  }
+
   alert(`Your score: ${score} / ${examData.questions.length}`);
 
   document.getElementById("examContainer").style.display = "none";
-  submitExamBtn.disabled = true;
+  document.getElementById("submitExamBtn").disabled = true;
 
   currentExamId = null;
 }
 
+
+// 🔥 LOAD EXAM CONTENT
 async function loadExamContent(examId) {
 
   const examDoc = await getDoc(doc(db, "exams", examId));
   if (!examDoc.exists()) return;
 
   const examData = examDoc.data();
-
-  currentExamId = examId;
 
   const container = document.getElementById("examContainer");
   const questionsDiv = document.getElementById("questionsContainer");
@@ -472,14 +462,20 @@ async function loadExamContent(examId) {
     }
 
     if (q.type === "short") {
-      html += `
-        <input type="text" name="q${index}">
-      `;
+      html += `<input type="text" name="q${index}">`;
     }
 
     html += `</div>`;
     questionsDiv.innerHTML += html;
   });
+}
+
+
+// 🔥 SUBMIT BUTTON LISTENER
+const submitExamBtn = document.getElementById("submitExamBtn");
+
+if (submitExamBtn) {
+  submitExamBtn.addEventListener("click", submitExam);
 }
 
 
